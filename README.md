@@ -336,8 +336,8 @@ The Piranha project has the following abstractions:
 
 ## Comments
 
-This was quite a challenging project, but one that I couldn't ignore, and that I 
-very much enjoyed writing along the way.
+This was quite a challenging project, but one that I couldn't resist. 
+I greatly enjoyed writing it and learned a ton.
 
 I was originally going to use some relational database with these relation tuples:
 
@@ -349,46 +349,44 @@ Assignment: {time_slot_id, boat_id}
 Boat: {id, name, capacity, available, customer_count}
 ```
 
-Then after a lot of thinking, I realized that this project could be opportunity to explore a 
-solution that didn't follow the conventional relational data store, something that could ultimately 
-scale across other nodes in a distributed way but something that didn't necessarily do joins that well.
+Then after a lot of thinking, I realized that this project could be an opportunity to explore a 
+solution that didn't follow the conventional relational data store model.  
 
-So I thought of basically fetching and retrieving aggregate data structures into `Mnesia` and designing
+Perhaps this could ultimately scale across other distributed nodes but without a lot of joins.
+
+I thought of fetching and retrieving aggregate data structures into `Mnesia` and designing
 those structures with less of a need for relational joins.
 
 I deconstructed `Boat` relation into `{id, name, capacity}` and then a new 
 `Boat.Status` into `{id, available, customer_count}`
 
-I realized that `Assignment` could be a data structure within boat (atleast a subset of all the assignments
-specific to that boat's world -- so as to not have to join) and that it would need to be made quickly
-searchable via a time stamp key. So I used a `Map (Hashtable) of MapSets` indexed by half hour key.  
+I realized that `Assignment` could be a data structure within boat (a subset of all the assignments
+specific to that boat's world).  This would need to be quickly searchable via a time stamp key. 
+I used a `Map (Hashtable) of MapSets` indexed by half hour key(s).  
 
-For the time slot, all those fields were great and something I could encapsulate within a module while 
-providing an efficient structure to retrieve the best matching boat availability as I decided on a sorted set.
-Erlang has some cool functional data structures, `:gb_sets` is one of them!
+For the time slot, I needed an efficient structure to retrieve the best matching boat
+ availability.  Erlang has some cool functional data structures, so I decided to use `:gb_sets` as 
+my sorted set implementation. 
 
-If you look at `Slot`, it has a subset of the boat availability info, but only as it pertains to that Slot.
-This also eliminated any need for joins, helpful in NoSQL world.
+I modeled `Slot` to have a subset of the boat availability info, that which only pertains to that specific Slot.
+This also eliminated any need for joins.
 
-I wanted my call relationships to follow a DAG. So `Slot -> Boat` as opposed to `Slot <-> Boat`.
-As I thought this would be harder to decouple and easier to reason about
+I wanted my call relationships to follow a DAG. So `Slot -> Boat`, Slot calling Boat as opposed to `Slot <-> Boat`.
+I thought this would be better decoupling and easier to reason about
 
 Before I decided on the `Amnesia` solution, I stubbed it out with an `Agent` which contained a map consisting of
 a Calendar and Fleet abstraction, storing slots and boats respectively.  These were glorified maps mostly.  
 
 At one point `Slot` took in a `Calendar` abstraction and `Fleet` abstraction, but I removed this coupling and 
-only allowed a map of `Slots` or `Boats` in and figured this extra data could be generated at a higher
-level in the stack at the `Controller` level when wrapped inside the `Amnesia` transaction to get
-the supplementary data.
+only allowed a map of `Slots` or `Boats`. I figured this extra data could be generated at a higher
+level in the stack.  It ended up at the `Controller` level when wrapped inside the `Amnesia` transaction to get
+the Slot and Boat id:values.
 
-Once this worked, I substituted in the Mnesia version which is sweet (minus the netsplits).
+Once this worked, I substituted in the Mnesia version.
 
 I ended up scrapping the `Tour` relation and reflected the `Booking` relation status within the Boat via a confirmation map.
 
-
-## Lastly on Usage
-
-If you want to blow away the database, just type mix uninstall and you can test out a fresh new state
+NOTE:  If you want to blow away the database, just type mix uninstall and you can test out a fresh new state
 when you run iex -S mix again. The mix uninstall task is defined in database.ex
 
 
