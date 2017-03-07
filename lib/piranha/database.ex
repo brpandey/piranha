@@ -82,7 +82,7 @@ defdatabase Piranha.Database do
     def update(:slot, %Slot{} = slot) do
 
       entry = %Appointment{id: slot.id, date: slot.interval.date, slot: slot}
-       %Appointment{} = entry |> Appointment.write
+      %Appointment{} = entry |> Appointment.write
 
       :ok
     end
@@ -160,7 +160,6 @@ defdatabase Piranha.Database do
       # we have an empty guard clause, and only select the boat field (#2)
       query = Vessel.select([{{Vessel, :'$1', :'$2'}, [], [:'$2']}])
 	    Selection.values(query)
-
     end
 
     

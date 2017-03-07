@@ -153,16 +153,16 @@ defmodule Piranha.Slot do
     
     init_acc = {:unavailable, slot, fleet}
     
-    # We keep checking boat availability until we are able to reserve successfully
-    
-    Enum.reduce_while(Stream.cycle([:ok]), init_acc, fn
-      _ok, {_, slot_acc, fleet_acc} ->
-        
-        case reserve_single(slot_acc, fleet_acc, size) do
-          {:unavailable, %Slot{}, %{}} = new_acc -> {:cont, new_acc}
-          {:ok, %Slot{}, %{}, _overlaps} = new_acc -> {:halt, new_acc}
-          :none -> {:halt, {:none, slot_acc, fleet_acc}}
-        end
+    # We keep checking boat availability until we are able to either
+    # reserve successfully or we've run out of available boats
+    iter = Stream.cycle([:ok])
+
+    Enum.reduce_while(iter, init_acc, fn _ok, {_, slot_acc, fleet_acc} ->
+      case reserve_single(slot_acc, fleet_acc, size) do
+        {:unavailable, %Slot{}, %{}} = new_acc -> {:cont, new_acc}
+        {:ok, %Slot{}, %{}, _overlaps} = new_acc -> {:halt, new_acc}
+        :none -> {:halt, {:none, slot_acc, fleet_acc}}
+      end
     end)
   end
 

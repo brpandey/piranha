@@ -3,16 +3,12 @@ defmodule Piranha.Worker do
   Intermediary between web and db, to queue requests as necessary
 
   Single point of failure here, but illustrates the need for a
-  queueing (pool) layer to handle scalability and synchronize requests :)
+  queueing and pooling layer to synchronize requests and provide scalability
   """
 
   use GenServer
+  alias Piranha.Controller  
 
-  alias Piranha.{Controller}
-
-  
-
-  @name __MODULE__ 
 
   @doc "Start worker"
   @spec start_link :: GenServer.on_start

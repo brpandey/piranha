@@ -131,7 +131,7 @@ defmodule Piranha.Web.Test do
   # Returns created boat, e.g. { id: def456, capacity: 8, name: "Amazon Express" }
   
 
-  test "create a boat" do
+  test "create a normal boat" do
     response = Helper.create_rest_boat("Amazon Express", 10)
 
     assert %{id: @amazon_express_10} = response.body
@@ -140,7 +140,7 @@ defmodule Piranha.Web.Test do
   end
 
 
-  test "create a boat without that is too small" do
+  test "create a boat that is too small" do
     response = Helper.create_rest_boat("Amazon Express", 1)
     assert "Piranha Web, Error %Maru.Exceptions.Validation{option: 2..200, param: :capacity, validator: :values, value: 1}" = response.body
   end

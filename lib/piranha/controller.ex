@@ -7,7 +7,6 @@ defmodule Piranha.Controller do
   but for simplicity kept as one.
   """
 
-  require Logger
   require Amnesia
 
   use Amnesia
@@ -22,13 +21,9 @@ defmodule Piranha.Controller do
   def create(:boat, name, capacity)
   when is_binary(name) and is_integer(capacity) do
     
-    Logger.debug("Reached boat create, name #{name} capacity #{capacity}")
-
     boat = %Boat{} = Amnesia.transaction do
       Vessel.add(name, capacity)
     end
-
-    Logger.debug("Finished amnesia transaction, result is #{inspect boat}")
 
     # return boat
     Boat.dump(boat)
@@ -41,14 +36,9 @@ defmodule Piranha.Controller do
   def create(:timeslot, start_time, duration)
   when is_integer(start_time) and is_integer(duration) do
 
-    Logger.debug("Reached timeslot create, start_time #{start_time} duration #{duration}")
-
-
     slot = %Slot{} = Amnesia.transaction do
       Appointment.add(start_time, duration)
     end
-
-    Logger.debug("Finished amnesia transaction, result is #{inspect slot}")
 
     # return slot
     Slot.dump(slot)
@@ -64,11 +54,7 @@ defmodule Piranha.Controller do
     end
 
     # get Boat dump version for each boat
-    boats = Enum.map(boats, fn b -> Boat.dump(b) end)
-
-    Logger.debug("Finished amnesia transaction, result is #{inspect boats}")
-
-    boats
+    Enum.map(boats, fn b -> Boat.dump(b) end)
   end
 
 
@@ -77,16 +63,12 @@ defmodule Piranha.Controller do
   @spec get(atom, String.t) :: list
   def get(:timeslots, date) when is_binary(date) do
 
-
     slots = Amnesia.transaction do
       Appointment.lookup(:date, date)
     end
 
-    slots = Enum.map(slots, fn %Slot{} = s -> Slot.dump(s) end)
-    
-    Logger.debug("Finished amnesia transaction, result is #{inspect slots}")
-
-    slots
+    # get Slot dump version for each slot
+    Enum.map(slots, fn %Slot{} = s -> Slot.dump(s) end)
   end
 
 
@@ -95,18 +77,12 @@ defmodule Piranha.Controller do
   def register(:boat_timeslot, timeslot_id, boat_id)
   when is_binary(timeslot_id) and is_binary(boat_id) do
 
-    Logger.debug("Reached register, timeslot_id #{timeslot_id}, boat_id #{boat_id}")
-
     Amnesia.transaction do
       slot = %Slot{} = Appointment.lookup(:id, timeslot_id)
       boat = %Boat{} = Vessel.lookup(:id, boat_id)
 
-      Logger.debug("About to register slot with boat")
-
       case Slot.register(slot, boat) do
         {:ok, slot, boat} ->
-
-          Logger.debug("Registered slot with boat successfully!")
 
           Appointment.update(:slot, slot)
           Vessel.update(:boat, boat)
@@ -114,7 +90,6 @@ defmodule Piranha.Controller do
 
         :unavailable -> :unavailable
       end
-      
     end
 
   end
@@ -127,7 +102,6 @@ defmodule Piranha.Controller do
   when is_binary(timeslot_id) and is_integer(size) do
 
     Amnesia.transaction do
-
       # Part 1: Make booking (e.g. Slot.reserve)
 
       # retrieve slot from timeslot_id
@@ -169,12 +143,8 @@ defmodule Piranha.Controller do
       # update the now reconciled excluded slots into the Appointments table
       :ok = Appointment.update(:slots, exc_slots)
 
-      Logger.debug("Finished amnesia transaction, result is #{inspect result}")
-
       result
-
     end
-
 
   end
 

@@ -21,7 +21,7 @@ defmodule Piranha.Boat do
   After a request registration is made, a boat may be reserved by the 
   time slot for actual use.
 
-  Confirmation stores confirmed time slot boat bookings for actual use.
+  Confirmation stores booked time slot ids.
 
   Exclusion contains the time slot ids that we aren't able to book,
   because the boat is in use by an overlapping time slot
@@ -40,8 +40,10 @@ defmodule Piranha.Boat do
   @hash_id Hashids.new([salt: "boat", min_len: 5])
 
 
-  defstruct id: nil, name: nil, capacity: 0, 
-  requests_by_time: Map.new, exclusion: Map.new, confirmation: Map.new
+  defstruct id: nil, # generated id
+  name: nil, capacity: 0, # params
+  requests_by_time: Map.new, # appointments list
+  exclusion: MapSet.new, confirmation: MapSet.new # sets recording booking exclusion or booking confirmation
 
   
   defmodule Status do
@@ -92,7 +94,7 @@ defmodule Piranha.Boat do
 
     # Invert the value, as exclusion = true means not available :)
 
-    excluded = Map.has_key?(boat.exclusion, interval.id)
+    excluded = MapSet.member?(boat.exclusion, interval.id)
 
     # if not in exclusion, look to see if interval overlaps 
     # with a slot already booked (hence not bookable)
@@ -159,17 +161,6 @@ defmodule Piranha.Boat do
     %Boat{boat | requests_by_time: appts}
   end
 
-  # Checks if the time slot has already been registered
-  defp registered?(%Boat{} = boat, %Interval{} = time) do
-
-    # Just grab first bucket key, to see if time interval is already registered
-    first_bucket_key = Interval.bucket_keys(time) |> List.first
-
-    case Map.get(boat.requests_by_time, first_bucket_key, nil) do
-      nil -> false
-      %MapSet{} = set -> MapSet.member?(set, time)
-    end
-  end
 
 
   @doc """
@@ -210,7 +201,7 @@ defmodule Piranha.Boat do
       true ->
         # Mark this time slot id as unbookable since the boat is being
         # used by an overlapping time slot -- add to exclusion 
-        updated_exclusion = Map.put(boat.exclusion, slot_id, true)        
+        updated_exclusion = MapSet.put(boat.exclusion, slot_id)        
 
         # Update boat
         boat = Kernel.put_in(boat.exclusion, updated_exclusion)
@@ -218,7 +209,7 @@ defmodule Piranha.Boat do
         {:unavailable, boat}
       false ->
         # The boat is not already taken, so make the booking!
-        updated_bookings = Map.put(boat.confirmation, slot_id, true)
+        updated_bookings = MapSet.put(boat.confirmation, slot_id)
         
         # Mark the other overlapping slots as unbookable now,
         # since we booked first -- add to the exclusion list!
@@ -233,7 +224,7 @@ defmodule Piranha.Boat do
         {updated_exclusion, list_exclusion_delta} = 
           Enum.reduce(overlap_slots, {boat.exclusion, []}, fn 
             (%Interval{id: overlap_id}, {map_acc, delta_acc}) ->
-              map_acc = Map.put(map_acc, overlap_id, true)
+              map_acc = MapSet.put(map_acc, overlap_id)
               delta_acc = List.flatten([{overlap_id, boat_id}], delta_acc)
             
               # return both accumulators
@@ -248,6 +239,10 @@ defmodule Piranha.Boat do
     end
 
   end
+
+
+  # PRIVATE HELPERS
+
 
   # Generates list of overlapping time slots 
   # (without using an interval search tree but a hashtable and sets)
@@ -304,6 +299,19 @@ defmodule Piranha.Boat do
   end
 
 
+  # Checks if the time slot has already been registered
+  defp registered?(%Boat{} = boat, %Interval{} = time) do
+
+    # Just grab first bucket key, to see if time interval is already registered
+    first_bucket_key = Interval.bucket_keys(time) |> List.first
+
+    case Map.get(boat.requests_by_time, first_bucket_key, nil) do
+      nil -> false
+      %MapSet{} = set -> MapSet.member?(set, time)
+    end
+  end
+
+
   # Helper to determine if any in interval list has already been confirmed
   @spec confirmed?(t, list) :: boolean
   defp confirmed?(%Boat{} = boat, intervals) when is_list(intervals) do
@@ -321,7 +329,7 @@ defmodule Piranha.Boat do
         
         # If it has: return true, else false!
         Enum.any?(values, fn (%Interval{id: slot_id}) -> 
-          Map.has_key?(boat.confirmation, slot_id)
+          MapSet.member?(boat.confirmation, slot_id)
         end)
     end
   end

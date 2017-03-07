@@ -81,7 +81,7 @@ Piranha View Tours keeps a number of different river boats, and does tours at va
   * none
 
 ##Test Cases
-This repository contains a client with which you can construct and visualize test cases.  To get you started, here are a couple basic cases you'll want to handle:
+
 
 ####Case 1:
 * POST /api/timeslots, params=`{ start_time: 1406052000, duration: 120 }`
@@ -222,10 +222,10 @@ These details correspond to `Case 2` from above
 %Piranha.Boat{
         # Max boat capacity
         capacity: 8,
-        # We keep a map of slot ids that have successfully made a reservation booking
-        confirmation: %{"abj3GAGijZ" => true},   
-        # We keep a map of slot ids that have been excluded because an overlapping time slot id has already made a booking
-        exclusion: %{"abj3DjVtjZ" => true},      
+        # We keep a mapset of slot ids that have successfully made a reservation booking
+        confirmation: #MapSet<["abj3GAGijZ"]>,   
+        # We keep a mapset of slot ids that have been excluded because an overlapping slot id has already made a booking
+        exclusion: #MapSet<["abj3DjVtjZ"]>,
         # Boat id string
         id: "GMCQLu1VInVfLyhRDUdoFlFG2fXwu7lcKNh2mT8WFzO", 
         # Boat name
@@ -297,41 +297,41 @@ The Piranha project has the following abstractions:
 
 * Boat
   * Manages an appointments list of slots requesting to use the boat given their time interval
-  * Its slots are just pointers (ids) to the real time slots
-  * Keeps track of slots that have been confirmed or excluded via a successful booking reservation
+  * Its slots are simply pointers (ids) to the real time slots -- allowing for looser coupling
+  * Keeps track of slots that have been confirmed via a successful booking reservation or excluded by overlapping slot use
 * Slot (Time Slot)
   * Keeps track of the boat status availabilities of its boats
   * Tracks availabilities left and customers booked so far
-  * Its boats are just pointers (ids) to the real boats
+  * Its boats are simply pointers (ids) to the real boats -- allowing for looser coupling
 * Interval (Time Interval)
   * Determines whether a time interval overlaps another
 * Web (Web Router)
-  * Implements REST routing layer via the Maru REST micro-framework 
+  * Implements REST routing layer via the Maru web micro-framework 
     (choosen here for its simplicity, e.g. 1 file)
 * Controller
   * Maps request to appropriate application / db logic
 * Worker
-  * Serves as a basic GenServer to illustrate queueing / synchronization (should really be a pool) and 
-    to potentially provide overflow handling
+  * Serves as a basic GenServer to illustrate synchronized queuing that could even provide overflow handling.
+  * Ultimately should be a worker pool or pool of pools (poolboy).
 * Database
   * Implemented via built-in Mnesia using the Amnesia Elixir wrapper
   * Defines two tables: Appointment and Vessel
   * The Appointment table has a secondary index on the :date field
   * Mnesia apparently is one of the building blocks along with "Unicorn blood" to make Riak
   * To fully scale this solution, you would want to replicate this data to other nodes
-    which Mnesia can do though (usually up to 10) and it has issues with netsplits in some cases
-    (something Riak can handle provided you specify the callbacks).
-    The point being, keeping db logic simpler and using tables as put / get stores for 
-    more complicated aggregate data structures w/ transactions or explicit conflict resolution 
-    would work well to scale without having to encounter some of the scalability concerns 
-    of traditional relational stores
+    which Mnesia can do though usually up to 10 nodes.  Though it has issues with netsplits 
+    in some cases, something like Riak can handle this provided you specify the callbacks.
+    Keeping the db logic simpler and using tables for fetch and retrieve operations of aggregate
+    data structures could be a very good idea.  However, transactional locking or explicit
+    conflict resolution would have to be handled but may scale better than a relational data store.
   * Complications would arise depending on how many conflicts happen.  Given this project
-    our two entities are slots and boats.  E.g.  How many time slots
-    overlap and involving what degree of the same boats?  We mainly write to the DB upon 
-    assignment registration and boat reservation and more so when we have made the reservation booking but 
-    have hence excluded a number of other slots for being able to use the boat.
-  * Conflict resolution strategies include locking, retrying transactions, vector clock based - 
-    last write wins or manual intervention
+    our two main entities are slots and boats.  Relevant points are:
+      * How many time slots overlap and involving what degree of boats? Are these boats the same?  
+      * We mainly write to the DB upon assignment registration and boat reservation.
+      * When we make a reservation booking which leaves a high number of excluded overlapping slots, 
+        this increases the slots we need to update as well.
+  * Conflict resolution strategies include locking, retrying transactions, (and in Riak world) 
+    vector clock based - last write wins or manual intervention
 
 
 ## Comments
@@ -350,32 +350,31 @@ Boat: {id, name, capacity, available, customer_count}
 ```
 
 Then after a lot of thinking, I realized that this project could be an opportunity to explore a 
-solution that didn't follow the conventional relational data store model.  
-
-Perhaps this could ultimately scale across other distributed nodes but without a lot of joins.
+solution that didn't follow the conventional relational data store model.  One that could
+ultimately scale across distributed nodes.
 
 I thought of fetching and retrieving aggregate data structures into `Mnesia` and designing
-those structures with less of a need for relational joins.
+those structures to be more self-sufficient with less of a need for relational joins.
 
-I deconstructed `Boat` relation into `{id, name, capacity}` and then a new 
-`Boat.Status` into `{id, available, customer_count}`
+I deconstructed `Boat` relation into `{id, name, capacity}` and then added a new 
+`Boat.Status` relation with fields `{id, available, customer_count}`
 
-I realized that `Assignment` could be a data structure within boat (a subset of all the assignments
+I realized that `Assignment` could be a data structure within `Boat` (all the assignments
 specific to that boat's world).  This would need to be quickly searchable via a time stamp key. 
-I used a `Map (Hashtable) of MapSets` indexed by half hour key(s).  
+I used a `Map (Hashtable) of MapSets` indexed by half hour key(s).
 
 For the time slot, I needed an efficient structure to retrieve the best matching boat
  availability.  Erlang has some cool functional data structures, so I decided to use `:gb_sets` as 
 my sorted set implementation. 
 
-I modeled `Slot` to have a subset of the boat availability info, that which only pertains to that specific Slot.
+I modeled `Slot` to have a subset of the boat availability info, pertaining to that specific Slot.
 This also eliminated any need for joins.
 
 I wanted my call relationships to follow a DAG. So `Slot -> Boat`, Slot calling Boat as opposed to `Slot <-> Boat`.
 I thought this would be better decoupling and easier to reason about
 
-Before I decided on the `Amnesia` solution, I stubbed it out with an `Agent` which contained a map consisting of
-a Calendar and Fleet abstraction, storing slots and boats respectively.  These were glorified maps mostly.  
+Before I decided on the `Amnesia` solution, I stubbed it out with an `Agent` consisting of
+a map with a Calendar and Fleet abstraction, storing slots and boats respectively.  These were glorified maps mostly.  
 
 At one point `Slot` took in a `Calendar` abstraction and `Fleet` abstraction, but I removed this coupling and 
 only allowed a map of `Slots` or `Boats`. I figured this extra data could be generated at a higher
@@ -384,12 +383,12 @@ the Slot and Boat id:values.
 
 Once this worked, I substituted in the Mnesia version.
 
-I ended up scrapping the `Tour` relation and reflected the `Booking` relation status within the Boat via a confirmation map.
+I ended up scrapping the `Tour` relation and injecting the `Booking` relation fields within Boat via a confirmation set.
 
 NOTE:  If you want to blow away the database, just type mix uninstall and you can test out a fresh new state
 when you run iex -S mix again. The mix uninstall task is defined in database.ex
 
-
+Starting the app is as easy as iex -S mix in the project directory which will run the server on localhost:3000
 
 
 Thanks!
