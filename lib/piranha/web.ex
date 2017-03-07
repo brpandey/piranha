@@ -22,7 +22,6 @@ defmodule Piranha.Web do
     # { id: abc123, start_time: 1406052000, duration: 120, availability: 0, customer_count: 0, boats: [] }
     
 
-
     desc "Create a timeslot"
     params do
       requires :start_time, type: Integer # unix timestamp e.g. 1406052000
@@ -39,10 +38,8 @@ defmodule Piranha.Web do
     # [{ id: abc123, start_time: 1406052000, duration: 120, availability: 4, customer_count: 4, boats: ['def456', ...] }, ...]
     
     desc "List timeslots"
-    params do
-      requires :date, type: String, regexp: ~r/^(\d){4}\-(\d){2}\-(\d){2}$/ # simple match YYYY-MM-DD
-                                                                            # More complex:
-                                                                            # ~r/^(19|20)\d\d-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$ 
+    params do # simple date match YYYY-MM-DD, more complex is ~r/^(19|20)\d\d-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$ 
+      requires :date, type: String, regexp: ~r/^(\d){4}\-(\d){2}\-(\d){2}$/ 
     end
     get do
       json(conn, Worker.get(:timeslots, params[:date]))
@@ -60,9 +57,7 @@ defmodule Piranha.Web do
     params do
       requires :capacity, type: Integer, values: 2..200
       requires :name, type: String
-    end
-
-    
+    end    
     post do
       json(conn, Worker.create(:boat, params[:name], params[:capacity]))
     end
@@ -88,10 +83,8 @@ defmodule Piranha.Web do
       requires :boat_id, type: String
     end
     post do
-      json(conn, 
-           Worker.register(:boat_timeslot,
-                         params[:timeslot_id], params[:boat_id]
-      ))
+      Worker.register(:boat_timeslot, params[:timeslot_id], params[:boat_id])
+      json(conn |> put_status(201), "")
     end
 
   end
@@ -104,16 +97,14 @@ defmodule Piranha.Web do
     desc "Make a booking"
     params do
       requires :timeslot_id, type: String
-      requires :size, type: Integer, values: 2..200
+      requires :size, type: Integer, values: 1..200
     end
-
     post do
-      json(conn, Worker.make(:booking, 
-                                 params[:timeslot_id], params[:size]))
+      Worker.make(:booking, params[:timeslot_id], params[:size])
+      json(conn |> put_status(201), "")
     end
 
   end
-
 
 
   rescue_from :all, as: e do
@@ -121,7 +112,7 @@ defmodule Piranha.Web do
     
     conn 
     |> put_status(500)
-    |> text("Piranha Web, Not found #{inspect e}")
+    |> text("Piranha Web, Error #{inspect e}")
   end
   
 

@@ -50,14 +50,6 @@ defmodule Piranha.Interval do
 
     date = start_dt |> DateTime.to_date |> Date.to_string
 
-    # Boats is a sorted set, implemented via a balanced tree, 
-    # Sorted by seat availability (least to most number of seats)
-    
-    # E.g. {availability, id, booked}
-    
-    # boats = [%Boat.Status{5, 1, 0}, %Boat.Status{8, 4, 0}, 
-    # %Boat.Status{10, 3, 0}, %Boat.Status{13, 7, 0}]    
-    
     %Interval{id: id, unix_start: start, unix_finish: finish_unix,
               start: start_dt, finish: finish_dt, duration: duration, date: date}
   end

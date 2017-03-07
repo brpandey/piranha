@@ -45,7 +45,7 @@ defmodule Piranha.Boat do
 
   
   defmodule Status do
-    @moduledoc "Helper module used to store Boat availability info"
+    @moduledoc "Helper module used to store boat availability status"
     @type t :: %__MODULE__{}
 
     defstruct id: nil, available: 0, customer_count: 0

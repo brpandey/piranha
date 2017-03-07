@@ -1,4 +1,3 @@
-require Logger
 require Amnesia
 use Amnesia
 
@@ -28,13 +27,9 @@ defdatabase Piranha.Database do
     @spec add(integer, integer) :: Slot.t
     def add(start_time, duration)
     when is_integer(start_time) and is_integer(duration) do
-      
-      Logger.debug("Made it to apointment add")
-      
+            
       slot = %Slot{} = Slot.new(start_time, duration)
-      
-      Logger.debug("Created slot it is #{inspect slot}")
-      
+            
       entry = %Appointment{id: slot.id, date: slot.interval.date, slot: slot} 
       appt = %Appointment{} = entry |> Appointment.write
       
@@ -47,7 +42,6 @@ defdatabase Piranha.Database do
     @doc "Retrieve all time slots associated with date"
     @spec lookup(atom, String.t) :: list
     def lookup(:date, date) when is_binary(date) do
-      Logger.debug("Made it to apointment lookup :date")
 
       # read_at uses the secondary index :date
       list = Appointment.read_at(date, :date)
@@ -60,7 +54,6 @@ defdatabase Piranha.Database do
     @doc "Retrieve time slot by id"
     @spec lookup(atom, String.t) :: Slot.t
     def lookup(:id, id) when is_binary(id) do
-      Logger.debug("Made it to apointment lookup :id")
 
       # uses the primary key index
       appt = %Appointment{} = Appointment.read(id) 
@@ -88,12 +81,8 @@ defdatabase Piranha.Database do
     @spec update(atom, Slot.t) :: :ok
     def update(:slot, %Slot{} = slot) do
 
-      old_slot = lookup(:id, slot.id)
-
       entry = %Appointment{id: slot.id, date: slot.interval.date, slot: slot}
-      appt = %Appointment{} = entry |> Appointment.write
-
-      Logger.debug("Updated slot.id #{slot.id} value to #{inspect appt.slot} from old value #{inspect old_slot}")
+       %Appointment{} = entry |> Appointment.write
 
       :ok
     end
@@ -128,13 +117,9 @@ defdatabase Piranha.Database do
     @spec add(String.t, integer) :: Boat.t
     def add(name, capacity)
     when is_binary(name) and is_integer(capacity) do
-
-      Logger.debug("Made it to vessel add")
       
       boat = %Boat{} = Boat.new(name, capacity)
 
-      Logger.debug("Created boat it is #{inspect boat}")
-      
       entry = %Vessel{id: boat.id, boat: boat}
       vessel = %Vessel{} = entry |> Vessel.write
 
@@ -147,7 +132,6 @@ defdatabase Piranha.Database do
     @doc "Retrieve boat given boat id"
     @spec lookup(atom, String.t) :: Boat.t
     def lookup(:id, id) when is_binary(id) do
-      Logger.debug("Made it to vessel lookup :id")
 
       # uses the primary key index
       vessel = %Vessel{} = Vessel.read(id) 
@@ -173,15 +157,10 @@ defdatabase Piranha.Database do
     @spec list() :: list
     def list() do
       
-      all = Amnesia.transaction do
-        # we have an empty guard clause, and only select the boat field (#2)
-        query = Vessel.select([{{Vessel, :'$1', :'$2'}, [], [:'$2']}])
-	      Selection.values(query)
-      end
-      
-      Logger.debug("List of all boats #{inspect all}")
+      # we have an empty guard clause, and only select the boat field (#2)
+      query = Vessel.select([{{Vessel, :'$1', :'$2'}, [], [:'$2']}])
+	    Selection.values(query)
 
-      all
     end
 
     
@@ -189,12 +168,8 @@ defdatabase Piranha.Database do
     @spec update(atom, Boat.t) :: :ok
     def update(:boat, %Boat{} = boat) do
 
-      old_boat = lookup(:id, boat.id)
-
       entry = %Vessel{id: boat.id, boat: boat}
-      vessel = %Vessel{} = entry |> Vessel.write
-
-      Logger.debug("Updated boat.id #{boat.id} value to #{inspect vessel.boat} from old value #{inspect old_boat}")
+      %Vessel{} = entry |> Vessel.write
 
       :ok
     end

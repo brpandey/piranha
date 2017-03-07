@@ -84,9 +84,6 @@ defmodule Piranha.Worker do
     {:ok, []}
   end
 
-
-  # Registers pid and returns the hangman secret length
-
   
   @callback handle_call({atom, String.t, integer}, tuple, list) :: tuple
   def handle_call({:create_boat, name, capacity}, _from, []) do

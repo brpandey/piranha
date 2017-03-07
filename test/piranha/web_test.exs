@@ -50,6 +50,17 @@ defmodule Piranha.Web.Test do
   end
 
 
+
+  test "create timeslot that is less than a half hour" do
+
+    response = Helper.create_rest_timeslot(@six_pm, 29)
+
+    assert "Piranha Web, Error %Maru.Exceptions.Validation{option: 30..720, param: :duration, validator: :values, value: 29}" = response.body
+
+  end
+
+
+
   test "create two timeslots" do
 
     response = Helper.create_rest_timeslot(@two_pm, 90)
@@ -110,7 +121,7 @@ defmodule Piranha.Web.Test do
 
     response = Helper.get!("/api/timeslots/", [], params: %{date: "2014-7-22"})
 
-    assert "Piranha Web, Not found %Maru.Exceptions.Validation{option: ~r/^(\\d){4}\\-(\\d){2}\\-(\\d){2}$/, param: :date, validator: :regexp, value: \"2014-7-22\"}" = response.body
+    assert "Piranha Web, Error %Maru.Exceptions.Validation{option: ~r/^(\\d){4}\\-(\\d){2}\\-(\\d){2}$/, param: :date, validator: :regexp, value: \"2014-7-22\"}" = response.body
 
   end
 
@@ -126,6 +137,12 @@ defmodule Piranha.Web.Test do
     assert %{id: @amazon_express_10} = response.body
     assert %{capacity: 10} = response.body
     assert %{name: "Amazon Express"} = response.body
+  end
+
+
+  test "create a boat without that is too small" do
+    response = Helper.create_rest_boat("Amazon Express", 1)
+    assert "Piranha Web, Error %Maru.Exceptions.Validation{option: 2..200, param: :capacity, validator: :values, value: 1}" = response.body
   end
  
 
@@ -170,7 +187,7 @@ defmodule Piranha.Web.Test do
 
     response = Helper.post!("/api/assignments", [], [], params: data)
 
-    assert response.body == "ok"
+    assert response.body == ""
   end
 
 
@@ -179,7 +196,7 @@ defmodule Piranha.Web.Test do
   # Returns none
 
 
-  test "create a booking" do
+  test "make a booking" do
 
     boat_resp = Helper.create_rest_boat("Amazon Express", 10)
     slot_resp = Helper.create_rest_timeslot(@six_pm, 120)
@@ -192,8 +209,27 @@ defmodule Piranha.Web.Test do
     data = %{timeslot_id: slot_id, size: 7}
     response = Helper.post!("/api/bookings/", [], [], params: data)
 
-    assert response.body == "ok"
+    assert response.body == ""
   end
+
+
+
+  test "make an empty booking" do
+
+    boat_resp = Helper.create_rest_boat("Amazon Express", 10)
+    slot_resp = Helper.create_rest_timeslot(@six_pm, 120)
+
+    boat_id = boat_resp.body.id
+    slot_id = slot_resp.body.id
+
+    _response = Helper.create_rest_assignment(slot_id, boat_id)
+
+    data = %{timeslot_id: slot_id, size: 0}
+    response = Helper.post!("/api/bookings/", [], [], params: data)
+
+    assert response.body == "Piranha Web, Error %Maru.Exceptions.Validation{option: 1..200, param: :size, validator: :values, value: 0}"
+  end
+
 
 end
 

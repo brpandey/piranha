@@ -5,7 +5,7 @@ defmodule Piranha.Slot do
   Manages a sorted set of boat availability statuses
   Boat statuses correspond to requested boats for this specific time slot
 
-  Efficiently is able to match the best boat given the requested size
+  Efficiently able to match the best boat given the requested size
 
   Keeps time interval abstraction as well to keep track
   of time slot particulars
@@ -229,8 +229,10 @@ defmodule Piranha.Slot do
   these slots attempt to reserve against the boat, but this is the explicit
   method which saves an extra call to reserve.
 
-  It does so by notifying all the excluded overlapping slots 
-  if there exists any.  Updates this group which resides in the slots map.
+  It does so by notifying all the excluded overlapping slots using the 
+  slot_id - boat_id pairs list. 
+
+  Goes on to update the passed in exclusion group to be handled higher up.
   """
 
   @spec reconcile(t, atom, map, list) :: map

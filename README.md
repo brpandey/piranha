@@ -187,7 +187,7 @@ This repository contains a client with which you can construct and visualize tes
 
 ## Implementation Details
 
-Here are details from my implementation that correspond to test integration case 2 from above
+These details correspond to `Case 2` from above
 
 ```elixir
 
@@ -319,7 +319,7 @@ The Piranha project has the following abstractions:
   * The Appointment table has a secondary index on the :date field
   * Mnesia apparently is one of the building blocks along with "Unicorn blood" to make Riak
   * To fully scale this solution, you would want to replicate this data to other nodes
-    which Mnesia can do though it has issues with netsplits 
+    which Mnesia can do though (usually up to 10) and it has issues with netsplits in some cases
     (something Riak can handle provided you specify the callbacks).
     The point being, keeping db logic simpler and using tables as put / get stores for 
     more complicated aggregate data structures w/ transactions or explicit conflict resolution 
@@ -330,15 +330,14 @@ The Piranha project has the following abstractions:
     overlap and involving what degree of the same boats?  We mainly write to the DB upon 
     assignment registration and boat reservation and more so when we have made the reservation booking but 
     have hence excluded a number of other slots for being able to use the boat.
-  * Conflict resolution strategies could include locking, retrying transactions, vector clock based - 
-    last write wins or manual intervention 
+  * Conflict resolution strategies include locking, retrying transactions, vector clock based - 
+    last write wins or manual intervention
 
 
 ## Comments
 
 This was quite a challenging project, but one that I couldn't ignore, and that I 
 very much enjoyed writing along the way.
-
 
 I was originally going to use some relational database with these relation tuples:
 
@@ -352,36 +351,39 @@ Boat: {id, name, capacity, available, customer_count}
 
 Then after a lot of thinking, I realized that this project could be opportunity to explore a 
 solution that didn't follow the conventional relational data store, something that could ultimately 
-scale across other nodes in a distributed way.
+scale across other nodes in a distributed way but something that didn't necessarily do joins that well.
 
-I deconstructed Boat relation into {id, name, capacity} and then a new 
-Boat.Status into {id, available, customer_count}
+So I thought of basically fetching and retrieving aggregate data structures into `Mnesia` and designing
+those structures with less of a need for relational joins.
 
-I realized that Assignment could be a data structure within boat (atleast a subset of all the assignments
+I deconstructed `Boat` relation into `{id, name, capacity}` and then a new 
+`Boat.Status` into `{id, available, customer_count}`
+
+I realized that `Assignment` could be a data structure within boat (atleast a subset of all the assignments
 specific to that boat's world -- so as to not have to join) and that it would need to be made quickly
-searchable via a time stamp key. So I used a Hashtable of MapSets indexed by half hour key.  
+searchable via a time stamp key. So I used a `Map (Hashtable) of MapSets` indexed by half hour key.  
 
 For the time slot, all those fields were great and something I could encapsulate within a module while 
-providing an efficient method to retrieve the best matching boat availability as I decided on a sorted set.
-Erlang has some cool functional data structuers, :gb_sets is one of them!
+providing an efficient structure to retrieve the best matching boat availability as I decided on a sorted set.
+Erlang has some cool functional data structures, `:gb_sets` is one of them!
 
-If you look at Slot, it has a subset of the boat availability info, but only as it pertains to that Boat.
+If you look at `Slot`, it has a subset of the boat availability info, but only as it pertains to that Slot.
 This also eliminated any need for joins, helpful in NoSQL world.
 
-So the way I was thinking about this was I didn't want to create any cyclical loops in my abstractions, but more of a 
-Directed Acylcic Graph.
+I wanted my call relationships to follow a DAG. So `Slot -> Boat` as opposed to `Slot <-> Boat`.
+As I thought this would be harder to decouple and easier to reason about
 
-Slot -> Boat as opposed to Slot <-> Boat (I thought this would be harder to decouple and reason about)
+Before I decided on the `Amnesia` solution, I stubbed it out with an `Agent` which contained a map consisting of
+a Calendar and Fleet abstraction, storing slots and boats respectively.  These were glorified maps mostly.  
 
-Before I decided on the Amnesia solution, I stubbed it out with an Agent which had a Calendar / Fleet abstraction
-which were glorified maps mostly.  
-
-At one point Slot took in a Calendar abstraction and Fleet abstraction, but I removed this coupling and 
-only allowed a map of Slot values or Boat values in and figured this extra data could be generated at a higher
-level in the abstraction stack .. e.g. at the Controller level when wrapped inside the Amnesia transaction to get
-the supplementary info.
+At one point `Slot` took in a `Calendar` abstraction and `Fleet` abstraction, but I removed this coupling and 
+only allowed a map of `Slots` or `Boats` in and figured this extra data could be generated at a higher
+level in the stack at the `Controller` level when wrapped inside the `Amnesia` transaction to get
+the supplementary data.
 
 Once this worked, I substituted in the Mnesia version which is sweet (minus the netsplits).
+
+I ended up scrapping the `Tour` relation and reflected the `Booking` relation status within the Boat via a confirmation map.
 
 
 ## Lastly on Usage

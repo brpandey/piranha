@@ -22,15 +22,6 @@ defmodule Piranha.SlotBoat.Test do
   @amazon_yacht_12      "1zHrluMQSENTa1I7oudnF7FQvhRwiYzhVkIyz"
 
 
-  # Run before all tests
-#  setup_all do
-    
-#    Application.stop(:piranha)
-#    IO.puts "Piranha Slot Test"
-    
-#  end
-
-
   describe "one slot no boats" do
 
     setup :one_slot_no_boat
