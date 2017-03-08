@@ -24,7 +24,7 @@ defmodule Piranha do
   def install_db() do # if db already created, then defaults to that
     Amnesia.Schema.create
     Amnesia.start
-    Piranha.Database.create(disk: [node])
+    Piranha.Database.create(disk: [node()])
     Piranha.Database.wait
   end
 

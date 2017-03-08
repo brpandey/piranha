@@ -197,7 +197,7 @@ defmodule Mix.Tasks.Install do
   def run(_) do
     Amnesia.Schema.create
     Amnesia.start
-    Piranha.Database.create(disk: [node])
+    Piranha.Database.create(disk: [node()])
     Piranha.Database.wait
   end
 end
