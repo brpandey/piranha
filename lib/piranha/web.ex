@@ -9,14 +9,14 @@ defmodule Piranha.Web do
 
   plug Plug.Parsers,
     pass: ["*/*"],
-    json_decoder: Poison,
-    parsers: [:urlencoded, :json, :multipart]
+    parsers: [:urlencoded, :json, :multipart],
+    json_decoder: Poison
 
   prefix :api
 
   namespace :timeslots do
 
-    # curl -H "Content-Type: application/json" -X POST -d '{ "start_time": "1406052000", "duration": "120" }' http://localhost:3000/api/timeslots/ 
+    # curl -H "Content-Type: application/json" -X POST -d '{ "timeslot" : { "start_time": "1406052000", "duration": "120" }}' http://localhost:3000/api/timeslots/
 
     # Returns created timeslot, e.g.
     # { id: abc123, start_time: 1406052000, duration: 120, availability: 0, customer_count: 0, boats: [] }
@@ -24,11 +24,14 @@ defmodule Piranha.Web do
 
     desc "Create a timeslot"
     params do
-      requires :start_time, type: Integer # unix timestamp e.g. 1406052000
-      requires :duration, type: Integer, values: 30..720 # 30 mins to 12 hours
+      group :timeslot, type: Map do
+        requires :start_time, type: Integer # unix timestamp e.g. 1406052000
+        requires :duration, type: Integer, values: 30..1440 # 30 mins to 24 hours
+      end
     end
     post do
-      json(conn, Worker.create(:timeslot, params[:start_time], params[:duration]))
+      result = Worker.create(:timeslot, params.timeslot.start_time, params.timeslot.duration)
+      json(conn, result)
     end    
 
     
@@ -50,16 +53,19 @@ defmodule Piranha.Web do
 
   namespace :boats do
 
-    # curl -H "Content-Type: application/json" -X POST -d '{ "capacity": "8", "name":"Amazon Express" }' http://localhost:3000/api/boats/ 
+    # curl -H "Content-Type: application/json" -X POST -d '{ "boat": { "capacity": "8", "name":"Amazon Express" }}' http://localhost:3000/api/boats/ 
     # Returns created boat, e.g. { id: def456, capacity: 8, name: "Amazon Express" }
         
     desc "Create a boat"
     params do
-      requires :capacity, type: Integer, values: 2..200
-      requires :name, type: String
+      group :boat, type: Map do
+        requires :capacity, type: Integer, values: 2..200
+        requires :name, type: String
+      end
     end    
     post do
-      json(conn, Worker.create(:boat, params[:name], params[:capacity]))
+      result = Worker.create(:boat, params.boat.name, params.boat.capacity)
+      json(conn, result)
     end
     
     # curl -X GET http://localhost:3000/api/boats/ 
@@ -74,16 +80,18 @@ defmodule Piranha.Web do
 
   namespace :assignments do
 
-    # curl -H "Content-Type: application/json" -X POST -d '{ "timeslot_id": "abc123", "boat_id":"def456" }' http://localhost:3000/api/assignments/ 
+    # curl -H "Content-Type: application/json" -X POST -d '{ "assignment": { "timeslot_id": "abc123", "boat_id":"def456" }}' http://localhost:3000/api/assignments/ 
     # Returns none
 
     desc "Assign boat to timeslot through register request"
     params do
-      requires :timeslot_id, type: String
-      requires :boat_id, type: String
+      group :assignment, type: Map do
+        requires :timeslot_id, type: String
+        requires :boat_id, type: String
+      end
     end
     post do
-      Worker.register(:boat_timeslot, params[:timeslot_id], params[:boat_id])
+      Worker.register(:boat_timeslot, params.assignment.timeslot_id, params.assignment.boat_id)
       json(conn |> put_status(201), "")
     end
 
@@ -91,16 +99,18 @@ defmodule Piranha.Web do
 
   namespace :bookings do
 
-    # curl -H "Content-Type: application/json" -X POST -d '{ "timeslot_id": "abc123", "size":"6" }' http://localhost:3000/api/bookings/ 
+    # curl -H "Content-Type: application/json" -X POST -d '{ "booking": { "timeslot_id": "abc123", "size":"6" }}' http://localhost:3000/api/bookings/ 
   # Returns none
 
     desc "Make a booking"
     params do
-      requires :timeslot_id, type: String
-      requires :size, type: Integer, values: 1..200
+      group :booking, type: Map do
+        requires :timeslot_id, type: String
+        requires :size, type: Integer, values: 1..200
+      end
     end
     post do
-      Worker.make(:booking, params[:timeslot_id], params[:size])
+      Worker.make(:booking, params.booking.timeslot_id, params.booking.size)
       json(conn |> put_status(201), "")
     end
 

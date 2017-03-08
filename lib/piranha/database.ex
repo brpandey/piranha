@@ -46,6 +46,8 @@ defdatabase Piranha.Database do
       # read_at uses the secondary index :date
       list = Appointment.read_at(date, :date)
 
+      list = if list == nil do [] else list end
+
       # get Slot dump version for each slot
       _slots = Enum.map(list, fn %Appointment{slot: %Slot{} = slot} -> slot end)      
     end
@@ -190,7 +192,7 @@ defdatabase Piranha.Database do
 end # End defdatabase
 
 
-defmodule Mix.Tasks.Install do
+defmodule Mix.Tasks.DbInstall do
   use Mix.Task
   use Piranha.Database
 
@@ -202,7 +204,7 @@ defmodule Mix.Tasks.Install do
   end
 end
 
-defmodule Mix.Tasks.Uninstall do
+defmodule Mix.Tasks.DbUninstall do
   use Mix.Task
   use Piranha.Database
 

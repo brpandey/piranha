@@ -32,7 +32,7 @@ defmodule Piranha.Web.Test do
 
 
 
-  # curl -H "Content-Type: application/json" -X POST -d '{ "start_time": "1406052000", "duration": "120" }' http://localhost:3000/api/timeslots/ 
+  # curl -H "Content-Type: application/json" -X POST -d '{timeslot: { "start_time": "1406052000", "duration": "120" }}' http://localhost:3000/api/timeslots/ 
   
   # Returns created timeslot, e.g.
   # { id: abc123, start_time: 1406052000, duration: 120, availability: 0, customer_count: 0, boats: [] }
@@ -55,7 +55,7 @@ defmodule Piranha.Web.Test do
 
     response = Helper.create_rest_timeslot(@six_pm, 29)
 
-    assert "Piranha Web, Error %Maru.Exceptions.Validation{option: 30..720, param: :duration, validator: :values, value: 29}" = response.body
+    assert "Piranha Web, Error %Maru.Exceptions.Validation{option: 30..1440, param: :duration, validator: :values, value: 29}" = response.body
 
   end
 
@@ -127,7 +127,7 @@ defmodule Piranha.Web.Test do
 
 
 
-  # curl -H "Content-Type: application/json" -X POST -d '{ "capacity": "8", "name":"Amazon Express" }' http://localhost:3000/api/boats/ 
+  # curl -H "Content-Type: application/json" -X POST -d '{"boat": { "capacity": "8", "name":"Amazon Express" }}' http://localhost:3000/api/boats/ 
   # Returns created boat, e.g. { id: def456, capacity: 8, name: "Amazon Express" }
   
 
@@ -182,7 +182,7 @@ defmodule Piranha.Web.Test do
 
 
 
-    # curl -H "Content-Type: application/json" -X POST -d '{ "timeslot_id": "abc123", "boat_id":"def456" }' http://localhost:3000/api/assignments/ 
+    # curl -H "Content-Type: application/json" -X POST -d '{"assignment": { "timeslot_id": "abc123", "boat_id":"def456" }}' http://localhost:3000/api/assignments/ 
     # Returns none
 
   test "assign boat to timeslot" do
@@ -193,16 +193,14 @@ defmodule Piranha.Web.Test do
     boat_id = boat_resp.body.id
     slot_id = slot_resp.body.id
 
-    data = %{timeslot_id: slot_id, boat_id: boat_id}
-
-    response = Helper.post!("/api/assignments", [], [], params: data)
+    response = Helper.create_rest_assignment(slot_id, boat_id)
 
     assert response.body == ""
   end
 
 
 
-    # curl -H "Content-Type: application/json" -X POST -d '{ "timeslot_id": "abc123", "size":"6" }' http://localhost:3000/api/bookings/ 
+    # curl -H "Content-Type: application/json" -X POST -d '{ "booking": { "timeslot_id": "abc123", "size":"6" }}' http://localhost:3000/api/bookings/ 
   # Returns none
 
 
@@ -216,8 +214,7 @@ defmodule Piranha.Web.Test do
 
     _response = Helper.create_rest_assignment(slot_id, boat_id)
 
-    data = %{timeslot_id: slot_id, size: 7}
-    response = Helper.post!("/api/bookings/", [], [], params: data)
+    response = Helper.create_rest_booking(slot_id, 7)
 
     assert response.body == ""
   end
@@ -234,8 +231,7 @@ defmodule Piranha.Web.Test do
 
     _response = Helper.create_rest_assignment(slot_id, boat_id)
 
-    data = %{timeslot_id: slot_id, size: 0}
-    response = Helper.post!("/api/bookings/", [], [], params: data)
+    response = Helper.create_rest_booking(slot_id, 0)
 
     assert response.body == "Piranha Web, Error %Maru.Exceptions.Validation{option: 1..200, param: :size, validator: :values, value: 0}"
   end

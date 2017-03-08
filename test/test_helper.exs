@@ -6,13 +6,10 @@ defmodule Piranha.Test.Helper do
   @url "http://127.0.0.1:3000"
 
 
-
-
   def create_rest_boat(name, size) when is_binary(name) and is_integer(size) do
 
-    data = %{capacity: size, name: name}
-    
-    response = post!("/api/boats/", [], [], params: data)
+    data = %{boat: %{capacity: size, name: name}}
+    response = post!("/api/boats/", data, [])
 
     response
   end
@@ -20,9 +17,8 @@ defmodule Piranha.Test.Helper do
 
   def create_rest_timeslot(start, duration) when is_integer(start) and is_integer(duration) do
 
-    data = %{start_time: start, duration: duration}
-    
-    response = post!("/api/timeslots/", [], [], params: data)
+    data = %{timeslot: %{start_time: start, duration: duration}}
+    response = post!("/api/timeslots/", data, [])
 
     response
   end
@@ -30,9 +26,9 @@ defmodule Piranha.Test.Helper do
   def create_rest_assignment(slot_id, boat_id)
   when is_binary(slot_id) and is_binary(boat_id) do 
 
-    data = %{timeslot_id: slot_id, boat_id: boat_id}
-    response = post!("/api/assignments", [], [], params: data)
-    
+    data = %{assignment: %{timeslot_id: slot_id, boat_id: boat_id}}
+    response = post!("/api/assignments", data, [])
+
     response
   end
 
@@ -40,8 +36,8 @@ defmodule Piranha.Test.Helper do
   def create_rest_booking(slot_id, size)
   when is_binary(slot_id) and is_integer(size) do
 
-    data = %{timeslot_id: slot_id, size: size}
-    response = post!("/api/bookings/", [], [], params: data)
+    data = %{booking: %{timeslot_id: slot_id, size: size}}
+    response = post!("/api/bookings/", data, [])
 
     response
   end
@@ -64,12 +60,12 @@ defmodule Piranha.Test.Helper do
     end
   end
   
-  # def process_request_body(body) do
-  #   Poison.encode!(body)
-  # end
+  def process_request_body(body) do
+    Poison.encode!(body)
+  end
   
   def process_request_headers(headers) do
-    [{'content-type', 'application/json'} | headers]
+    [{"Content-Type", "application/json"} | headers]
   end
   
 end

@@ -385,11 +385,14 @@ Once this worked, I substituted in the Mnesia version.
 
 I ended up scrapping the `Tour` relation and injecting the `Booking` relation fields within Boat via a confirmation set.
 
-NOTE:  If you want to blow away the database, just type mix uninstall and you can test out a fresh new state
-when you run iex -S mix again. The mix uninstall task is defined in database.ex
+
+## Lastly
+If you want to blow away the database, just type mix uninstall and you can test out a fresh new state
+when you run iex -S mix again. The mix db_uninstall task is defined in database.ex
 
 Starting the app is as easy as iex -S mix in the project directory which will run the server on localhost:3000
 
 
-Thanks!
+## Thanks!
+
 Bibek
