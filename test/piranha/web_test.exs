@@ -5,20 +5,20 @@ defmodule Piranha.Web.Test do
   # Unix timestamp start values
 
   @two_pm    1406037600
-  @three_pm  1406041200
+#  @three_pm  1406041200
   @six_pm    1406052000
 
 
   # UIDs
 
   @slot_2pm_to_3_30pm   "3Yey3pafll"  
-  @slot_3pm_to_4pm      "2lnywEMUpx"
+#  @slot_3pm_to_4pm      "2lnywEMUpx"
   @slot_6pm_to_8pm      "abj3DjVtjZ"
 
 
   @amazon_express_10    "yxUbWubduKNclzUE2uOBTzFbVfawh78cqlS12HZkHJ8"
   @amazon_speedy_6      "EWiLmuZ5slOfE3I27teRs2FvOfDpIBOTR4CmYSOz"
-  @amazon_yacht_12      "1zHrluMQSENTa1I7oudnF7FQvhRwiYzhVkIyz"
+#  @amazon_yacht_12      "1zHrluMQSENTa1I7oudnF7FQvhRwiYzhVkIyz"
 
 
   setup_all do
@@ -151,23 +151,33 @@ defmodule Piranha.Web.Test do
 
   test "list boats" do
 
-    _response = Helper.create_rest_boat("Amazon Express", 10)
-    _response = Helper.create_rest_boat("Amazon Speedy", 6)
+    response = Helper.create_rest_boat("Amazon Express", 10)
 
+    boat1 = response.body
+
+    response = Helper.create_rest_boat("Amazon Speedy", 6)
+
+    boat2 = response.body
 
     response = Helper.get!("/api/boats/", [], [])
 
-    boat_map = response.body |> List.first
 
-    assert %{id: @amazon_speedy_6} = boat_map
-    assert %{capacity: 6} = boat_map
-    assert %{name: "Amazon Speedy"} = boat_map
+    # inject response into a MapSet so that order of boats doesn't matter
 
-    boat_map = response.body |> List.last
+    set = response.body |> MapSet.new
 
-    assert %{id: @amazon_express_10} = boat_map
-    assert %{capacity: 10} = boat_map
-    assert %{name: "Amazon Express"} = boat_map
+    assert true = MapSet.member?(set, boat1)
+
+    assert %{id: @amazon_express_10} = boat1
+    assert %{capacity: 10} = boat1
+    assert %{name: "Amazon Express"} = boat1
+
+    assert true = MapSet.member?(set, boat2)
+
+    assert %{id: @amazon_speedy_6} = boat2
+    assert %{capacity: 6} = boat2
+    assert %{name: "Amazon Speedy"} = boat2
+
   end
 
 

@@ -35,7 +35,7 @@ defmodule Piranha.Web.IntegrationTest do
   def install_db() do
     Amnesia.Schema.create
     Amnesia.start
-    Piranha.Database.create(disk: [node])
+    Piranha.Database.create(disk: [node()])
     Piranha.Database.wait
   end
 
