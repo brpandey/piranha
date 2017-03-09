@@ -392,6 +392,8 @@ when you run iex -S mix again. The mix db_uninstall task is defined in database.
 
 Starting the app is as easy as iex -S mix in the project directory which will run the server on localhost:3000
 
+There are a range of tests but not exhaustive in the test/piranha folder
+
 
 ## Thanks!
 

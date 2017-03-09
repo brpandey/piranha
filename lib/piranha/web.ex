@@ -4,8 +4,10 @@ defmodule Piranha.Web do
   """
 
   use Maru.Router
-
   alias Piranha.Worker
+
+  # Handle CORS
+  plug Corsica, origins: "*"
 
   plug Plug.Parsers,
     pass: ["*/*"],

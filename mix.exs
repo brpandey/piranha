@@ -15,7 +15,7 @@ defmodule Piranha.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [applications: [:logger, :maru, :timex], mod: {Piranha, []}]
+    [applications: [:logger, :maru, :timex, :corsica], mod: {Piranha, []}]
   end
 
   # Dependencies can be Hex packages:
@@ -34,7 +34,8 @@ defmodule Piranha.Mixfile do
       {:timex, "~> 3.1"},
       {:poison, "~> 3.0"},
       {:httpoison, "~> 0.11.0"},
-      {:amnesia, "~> 0.2.5"}
+      {:amnesia, "~> 0.2.5"},
+      {:corsica, "~> 0.5"}
     ]
   end
 end

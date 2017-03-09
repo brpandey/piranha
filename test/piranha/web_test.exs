@@ -5,20 +5,20 @@ defmodule Piranha.Web.Test do
   # Unix timestamp start values
 
   @two_pm    1406037600
-#  @three_pm  1406041200
+  @three_pm  1406041200
   @six_pm    1406052000
 
 
   # UIDs
 
   @slot_2pm_to_3_30pm   "3Yey3pafll"  
-#  @slot_3pm_to_4pm      "2lnywEMUpx"
+  @slot_3pm_to_4pm      "2lnywEMUpx"
   @slot_6pm_to_8pm      "abj3DjVtjZ"
 
 
   @amazon_express_10    "yxUbWubduKNclzUE2uOBTzFbVfawh78cqlS12HZkHJ8"
   @amazon_speedy_6      "EWiLmuZ5slOfE3I27teRs2FvOfDpIBOTR4CmYSOz"
-#  @amazon_yacht_12      "1zHrluMQSENTa1I7oudnF7FQvhRwiYzhVkIyz"
+  @amazon_yacht_12      "1zHrluMQSENTa1I7oudnF7FQvhRwiYzhVkIyz"
 
 
   setup_all do
@@ -26,10 +26,19 @@ defmodule Piranha.Web.Test do
 
     # We also need to start HTTPoison
     HTTPoison.start
-
+    on_exit fn ->
+      uninstall_db() # drop db
+    end
     :ok
   end
 
+
+  def uninstall_db() do
+    Amnesia.start
+    Piranha.Database.destroy
+    Amnesia.stop
+    Amnesia.Schema.destroy
+  end
 
 
   # curl -H "Content-Type: application/json" -X POST -d '{timeslot: { "start_time": "1406052000", "duration": "120" }}' http://localhost:3000/api/timeslots/ 
@@ -236,6 +245,40 @@ defmodule Piranha.Web.Test do
     assert response.body == "Piranha Web, Error %Maru.Exceptions.Validation{option: 1..200, param: :size, validator: :values, value: 0}"
   end
 
+
+
+  test "make unsuccessful booking" do
+
+    boat_resp = Helper.create_rest_boat("Amazon Yacht", 12)
+    slot_resp = Helper.create_rest_timeslot(@three_pm, 60)
+
+    boat_id = boat_resp.body.id
+    slot_id = slot_resp.body.id
+
+    _response = Helper.create_rest_assignment(slot_id, boat_id)
+
+    response = Helper.create_rest_booking(slot_id, 7)
+
+    assert "" == response.body
+
+    response = Helper.create_rest_booking(slot_id, 11)
+
+    assert "" == response.body
+
+    response = Helper.get!("/api/timeslots/", [], params: %{date: "2014-07-22"})
+
+    set = response.body |> MapSet.new
+
+
+    slot = %{availability: 5,
+               boats: [@amazon_yacht_12],
+               customer_count: 7, duration: 60, id: @slot_3pm_to_4pm,
+               start_time: @three_pm} 
+
+    
+    # Assert that this slot availability is in the db for the 3pm to 4pm slot!
+    assert MapSet.member?(set, slot)
+  end
 
 end
 

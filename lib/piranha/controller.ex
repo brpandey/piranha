@@ -115,37 +115,56 @@ defmodule Piranha.Controller do
       boats = %{} = Vessel.lookup(:ids, boat_ids)
 
       # make the booking
-      {result, slot, boats, exclude_pairs} = Slot.reserve(slot, boats, size)
+      result = Slot.reserve(slot, boats, size)
 
       # update db with the updated boats
       # update the slot in the db now that we've made the reservation
-      :ok = Vessel.update(:boats, boats)
-      :ok = Appointment.update(:slot, slot)
+      :ok = Vessel.update(:boats, elem(result, 2)) # extract boats from pos 2, 0 based tuple
+      :ok = Appointment.update(:slot, elem(result, 1)) # extract slot from pos 1, 0 based tuple
+      
+
+      case result do
+        {code, _slot, _boats} when code in [:none, :unavailable] -> code
+        {code, _slot, _boats, exclude_pairs} when code in [:ok] -> 
+          handle_exclusion(exclude_pairs)
+          code
+      end
+        
+    end # transaction end
+
+  end
 
 
-      # Part 2: Reconcile excluded slots properly
+  # Helper to reconcile excluded slots 
+  # MUST be called within a transaction
+  @spec handle_exclusion(list) :: :ok
+  defp handle_exclusion(exclude_pairs) when is_list(exclude_pairs) do
+
+      # Conditional Part 2: Reconcile excluded slots properly
 
       # Now start the process of reconciling the excluded slots with 
       # the fact that they no longer have one of their boats available
       
       # retrieve slot_ids list from slot_ids - boat_ids tuple pairs list
       # handles empty list with returning two "unzipped" empty lists
-      {slot_ids, _boat_ids}  = Enum.unzip(exclude_pairs)
-      
-      # retrieve map of slots from slot_ids list
-      exc_slots = Appointment.lookup(:ids, slot_ids)
-      
-      # update the excluded slots so that they have accurate
-      # info now on the just reserved boat's non-availability
-      
-      exc_slots = Slot.reconcile(slot, :exclusion, exc_slots, exclude_pairs)
-      
-      # update the now reconciled excluded slots into the Appointments table
-      :ok = Appointment.update(:slots, exc_slots)
 
-      result
-    end
+      if(Enum.count(exclude_pairs) > 0) do
 
+        {slot_ids, _boat_ids}  = Enum.unzip(exclude_pairs)
+      
+        # retrieve map of slots from slot_ids list
+        exc_slots = Appointment.lookup(:ids, slot_ids)
+        
+        # update the excluded slots so that they have accurate
+        # info now on the just reserved boat's non-availability
+        
+        exc_slots = Slot.reconcile(%Slot{}, :exclusion, exc_slots, exclude_pairs)
+        
+        # update the now reconciled excluded slots into the Appointments table
+        :ok = Appointment.update(:slots, exc_slots)
+      end
+    
+      :ok
   end
 
 end
