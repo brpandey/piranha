@@ -386,6 +386,10 @@ Once this worked, I substituted in the Mnesia version.
 I ended up scrapping the `Tour` relation and injecting the `Booking` relation fields within Boat via a confirmation set.
 
 
+## Visualization
+![Visualization](https://raw.githubusercontent.com/brpandey/piranha/master/priv/images/visualization.png)
+
+
 ## Lastly
 If you want to blow away the database, just type mix uninstall and you can test out a fresh new state
 when you run iex -S mix again. The mix db_uninstall task is defined in database.ex
