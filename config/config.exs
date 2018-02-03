@@ -18,7 +18,7 @@ use Mix.Config
 #
 # Or configure a 3rd-party app:
 #
-     config :logger, level: :info
+config :logger, level: :info
 #
 
 # It is also possible to import configuration files, relative to this
@@ -28,5 +28,4 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
-config :maru, Piranha.Web,
-http: [port: 3000]
+config :maru, Piranha.Web, http: [port: 3000]

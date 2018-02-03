@@ -30,22 +30,24 @@ defmodule Piranha.Boat do
   not the slot structures themselves, in the interest of decoupling
   """
 
-
   alias Piranha.{Boat, Interval}
-
 
   @type t :: %__MODULE__{}
 
   # used to create short, unique stringified boat ids
-  @hash_id Hashids.new([salt: "boat", min_len: 5])
+  @hash_id Hashids.new(salt: "boat", min_len: 5)
 
+  # generated id
+  defstruct id: nil,
+            # params
+            name: nil,
+            capacity: 0,
+            # appointments list
+            requests_by_time: Map.new(),
+            # sets recording booking exclusion or booking confirmation
+            exclusion: MapSet.new(),
+            confirmation: MapSet.new()
 
-  defstruct id: nil, # generated id
-  name: nil, capacity: 0, # params
-  requests_by_time: Map.new, # appointments list
-  exclusion: MapSet.new, confirmation: MapSet.new # sets recording booking exclusion or booking confirmation
-
-  
   defmodule Status do
     @moduledoc "Helper module used to store boat availability status"
     @type t :: %__MODULE__{}
@@ -53,27 +55,23 @@ defmodule Piranha.Boat do
     defstruct id: nil, available: 0, customer_count: 0
   end
 
-
   @doc "Creates new boat given boat name and capacity"
-  @spec new(String.t, integer) :: t
+  @spec new(String.t(), integer) :: t
   def new(name, capacity)
-  when is_binary(name) and is_integer(capacity) and capacity > 0 do
-    
+      when is_binary(name) and is_integer(capacity) and capacity > 0 do
     # Generate numeric id from capacity and boat name 
     token = List.flatten([capacity], String.to_charlist(name))
 
     # Generate short, unique, non-sequential id
     id = Hashids.encode(@hash_id, token)
-    
+
     # Return new boat
     %Boat{id: id, name: name, capacity: capacity}
   end
 
-
   @doc "Returns boat capacity"
   @spec capacity(t) :: integer
   def capacity(%Boat{capacity: capacity}), do: capacity
-
 
   @doc "Returns succinct map of boat data"
   @spec dump(t) :: map
@@ -81,14 +79,12 @@ defmodule Piranha.Boat do
     %{id: b.id, capacity: b.capacity, name: b.name}
   end
 
-
   @doc """
   Simple check whether boat is available given interval.
   Based on previous booking attempts across time slots for given boat.
   """
-  @spec available?(t, Interval.t) :: boolean
+  @spec available?(t, Interval.t()) :: boolean
   def available?(%Boat{} = boat, %Interval{} = interval) do
-
     # Check to see if time slot is listed on the "exclusion" /
     # unbookable list 
 
@@ -102,17 +98,15 @@ defmodule Piranha.Boat do
     # (this is for the potential time slot registries
     # before they even register with the boat)
 
-    if(true == excluded) do
+    if true == excluded do
       false
     else
       list = overlaps(boat, interval)
       flag = confirmed?(boat, list)
 
-      not(flag)
+      not flag
     end
-
   end
-
 
   @doc """
   Catalogues "use request" for boat on requested time slot interval
@@ -128,9 +122,8 @@ defmodule Piranha.Boat do
   Thus, boat use is on a First Reserve First Serve Basis with
   request registration being the underlying requirement
   """
-  @spec request(t, Interval.t) :: t
+  @spec request(t, Interval.t()) :: t
   def request(%Boat{} = boat, %Interval{} = time) do
-
     # Sanity check we don't already have this interval
     false = registered?(boat, time)
 
@@ -141,27 +134,24 @@ defmodule Piranha.Boat do
 
     # Put slot into MapSet, as we have space for multiple requests_by_time in
     # this bucket interval period
-    
-    appts = 
-      Enum.reduce(bucket_keys, boat.requests_by_time, fn
-        key, acc ->    
-          # a) Just in case this value is empty on first access,
-          # we specify a new MapSet as default
-          
-          # b) Put interval into MapSet (either empty or already populated)
-          # Basically intervals that fall within the same half hour are
-          # in the same set as they "overlap"
-          
-          # c) This makes it easier to determine which intervals to 
-          # flag as unbookable later during reservation
-          set = Map.get(acc, key, MapSet.new) |> MapSet.put(time)
-          Map.put(acc, key, set)
-      end)    
+
+    appts =
+      Enum.reduce(bucket_keys, boat.requests_by_time, fn key, acc ->
+        # a) Just in case this value is empty on first access,
+        # we specify a new MapSet as default
+
+        # b) Put interval into MapSet (either empty or already populated)
+        # Basically intervals that fall within the same half hour are
+        # in the same set as they "overlap"
+
+        # c) This makes it easier to determine which intervals to 
+        # flag as unbookable later during reservation
+        set = Map.get(acc, key, MapSet.new()) |> MapSet.put(time)
+        Map.put(acc, key, set)
+      end)
 
     %Boat{boat | requests_by_time: appts}
   end
-
-
 
   @doc """
   Reserve attempts to reserve the boat for the given time slot interval.
@@ -177,9 +167,8 @@ defmodule Piranha.Boat do
   Actual boat use is on a First Reserve First Serve Basis with
   registration being the underlying requirement
   """
-  @spec reserve(t, Interval.t) :: {atom, t} | {atom, t, list}
+  @spec reserve(t, Interval.t()) :: {atom, t} | {atom, t, list}
   def reserve(%Boat{id: boat_id} = boat, %Interval{id: slot_id} = time) do
-
     # Quick assert that we have already registered 
     # this time slot id with this boat
     true = registered?(boat, time)
@@ -201,16 +190,17 @@ defmodule Piranha.Boat do
       true ->
         # Mark this time slot id as unbookable since the boat is being
         # used by an overlapping time slot -- add to exclusion 
-        updated_exclusion = MapSet.put(boat.exclusion, slot_id)        
+        updated_exclusion = MapSet.put(boat.exclusion, slot_id)
 
         # Update boat
         boat = Kernel.put_in(boat.exclusion, updated_exclusion)
-        
+
         {:unavailable, boat}
+
       false ->
         # The boat is not already taken, so make the booking!
         updated_bookings = MapSet.put(boat.confirmation, slot_id)
-        
+
         # Mark the other overlapping slots as unbookable now,
         # since we booked first -- add to the exclusion list!
 
@@ -221,28 +211,24 @@ defmodule Piranha.Boat do
         # on this boat because of this specific booking. Record this as 
         # a tuple {slot_id, boat_id} and store into a list
 
-        {updated_exclusion, list_exclusion_delta} = 
-          Enum.reduce(overlap_slots, {boat.exclusion, []}, fn 
-            (%Interval{id: overlap_id}, {map_acc, delta_acc}) ->
-              map_acc = MapSet.put(map_acc, overlap_id)
-              delta_acc = List.flatten([{overlap_id, boat_id}], delta_acc)
-            
-              # return both accumulators
-              {map_acc, delta_acc}
+        {updated_exclusion, list_exclusion_delta} =
+          Enum.reduce(overlap_slots, {boat.exclusion, []}, fn %Interval{id: overlap_id},
+                                                              {map_acc, delta_acc} ->
+            map_acc = MapSet.put(map_acc, overlap_id)
+            delta_acc = List.flatten([{overlap_id, boat_id}], delta_acc)
+
+            # return both accumulators
+            {map_acc, delta_acc}
           end)
-        
+
         # Update boat
-        boat = %Boat{ boat | exclusion: updated_exclusion, 
-                      confirmation: updated_bookings}
+        boat = %Boat{boat | exclusion: updated_exclusion, confirmation: updated_bookings}
 
         {:ok, boat, list_exclusion_delta}
     end
-
   end
 
-
   # PRIVATE HELPERS
-
 
   # Generates list of overlapping time slots 
   # (without using an interval search tree but a hashtable and sets)
@@ -253,9 +239,8 @@ defmodule Piranha.Boat do
   # generate the set of all overlapping time slots which reside on the
   # same time slot half hour buckets.  We then double-check that those
   # time slots overlap
-  @spec overlaps(t, Interval.t) :: list
+  @spec overlaps(t, Interval.t()) :: list
   defp overlaps(%Boat{} = boat, %Interval{} = source) do
-
     bucket_keys = Interval.bucket_keys(source)
 
     # Given set of keys, grab the Set for each key
@@ -275,11 +260,12 @@ defmodule Piranha.Boat do
     # for boundary conditions if say SlotF ends before our Source Slot starts
     # or SlotM starts after our Source Slot finishes! 
 
-    overlap_set = 
-      Enum.reduce(bucket_keys, MapSet.new, fn key, acc ->
+    overlap_set =
+      Enum.reduce(bucket_keys, MapSet.new(), fn key, acc ->
         # Grab all time slots for bucket, reflected by each set
-        set = %MapSet{} = Map.get(boat.requests_by_time, key, MapSet.new) 
-        MapSet.union(set, acc) # merge sets together
+        set = %MapSet{} = Map.get(boat.requests_by_time, key, MapSet.new())
+        # merge sets together
+        MapSet.union(set, acc)
       end)
 
     # Don't include the original time slot in the overlap set
@@ -289,21 +275,23 @@ defmodule Piranha.Boat do
     # Check whether the time slots in the overlap set really overlap
     # with the passed in source time slot
 
-    _overlaps = 
-      Enum.reduce(overlap_set, [], fn %Interval{} = other, acc -> 
+    _overlaps =
+      Enum.reduce(overlap_set, [], fn %Interval{} = other, acc ->
         case Interval.overlap?(source, other) do
-          true -> List.flatten([other], acc) # add time slot to overlaps acc
-          false -> acc
+          # add time slot to overlaps acc
+          true ->
+            List.flatten([other], acc)
+
+          false ->
+            acc
         end
       end)
   end
 
-
   # Checks if the time slot has already been registered
   defp registered?(%Boat{} = boat, %Interval{} = time) do
-
     # Just grab first bucket key, to see if time interval is already registered
-    first_bucket_key = Interval.bucket_keys(time) |> List.first
+    first_bucket_key = Interval.bucket_keys(time) |> List.first()
 
     case Map.get(boat.requests_by_time, first_bucket_key, nil) do
       nil -> false
@@ -311,24 +299,23 @@ defmodule Piranha.Boat do
     end
   end
 
-
   # Helper to determine if any in interval list has already been confirmed
   @spec confirmed?(t, list) :: boolean
   defp confirmed?(%Boat{} = boat, intervals) when is_list(intervals) do
-    
     case intervals do
-      [] -> false
-      values when is_list(values) -> 
-        
+      [] ->
+        false
+
+      values when is_list(values) ->
         # If any of these (overlapping) timeslot intervals are 
         # booked with this boat, then we indicate that the
         # boat is already booked
-        
+
         # So, query confirmed bookings to check if the boat 
         # has already been booked by any of these slot intervals
-        
+
         # If it has: return true, else false!
-        Enum.any?(values, fn (%Interval{id: slot_id}) -> 
+        Enum.any?(values, fn %Interval{id: slot_id} ->
           MapSet.member?(boat.confirmation, slot_id)
         end)
     end
